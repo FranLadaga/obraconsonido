@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Replica de Referencia</title>
+  <script>
+    window.addEventListener('error', function(e) {
+      var errorLog = document.getElementById('error-log');
+      if (!errorLog) return;
+      if (e.target && (e.target.src || e.target.href)) {
+        errorLog.innerText += '\nFailed to load resource: ' + (e.target.src || e.target.href);
+      } else {
+        errorLog.innerText += '\nError: ' + e.message + ' at ' + e.filename + ':' + e.lineno + ':' + e.colno + '\n' + (e.error ? e.error.stack : '');
+      }
+    }, true);
+    window.addEventListener('unhandledrejection', function(e) {
+      var errorLog = document.getElementById('error-log');
+      if (errorLog) {
+        errorLog.innerText += '\nUnhandled Rejection: ' + e.reason;
+      }
+    });
+  </script>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.6.0/lib/p5.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.6.0/lib/addons/p5.sound.min.js"></script>
+  <script src="sketch.js" defer></script>
+</head>
+
+<body>
+  <div id="error-log" style="color: red; padding: 20px; font-family: monospace; font-size: 16px; white-space: pre-wrap; z-index: 9999; position: absolute; top: 0; left: 0; pointer-events: none; width: 100%;"></div>
+  <main>
+    <div id="canvas-container"></div>
+  </main>
+</body>
+
+</html>
