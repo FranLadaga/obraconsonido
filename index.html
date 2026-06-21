@@ -30,8 +30,121 @@
 
 <body>
   <div id="error-log" style="color: red; padding: 20px; font-family: monospace; font-size: 16px; white-space: pre-wrap; z-index: 9999; position: absolute; top: 0; left: 0; pointer-events: none; width: 100%;"></div>
+
   <main>
+
+    <!-- ── Panel de control de audio ── -->
+    <aside id="audio-panel">
+      <h2 class="panel-title">AUDIO INPUT</h2>
+
+      <!-- VU Meter -->
+      <section class="panel-section">
+        <span class="section-label">VU METER</span>
+        <div class="vu-wrap">
+          <div class="vu-bar-container">
+            <div id="vu-bar" class="vu-bar"></div>
+            <div class="vu-zones">
+              <span class="vu-zone green"></span>
+              <span class="vu-zone yellow"></span>
+              <span class="vu-zone red"></span>
+            </div>
+          </div>
+          <span id="vu-val" class="vu-number">0.000</span>
+        </div>
+        <!-- Peak hold indicator -->
+        <div class="peak-row">
+          <span class="label-sm">PEAK</span>
+          <span id="peak-val" class="value-sm">0.000</span>
+        </div>
+      </section>
+
+      <!-- Volumen -->
+      <section class="panel-section">
+        <span class="section-label">VOLUMEN</span>
+        <div class="meter-row">
+          <span class="label-sm">Vol</span>
+          <div class="bar-wrap"><div id="bar-vol" class="bar-fill bar-vol"></div></div>
+          <span id="val-vol" class="value-sm">0.000</span>
+        </div>
+        <div class="meter-row">
+          <span class="label-sm">Spike</span>
+          <div class="bar-wrap"><div id="bar-spike" class="bar-fill bar-spike"></div></div>
+          <span id="val-spike" class="value-sm">0.000</span>
+        </div>
+      </section>
+
+      <!-- Frecuencias -->
+      <section class="panel-section">
+        <span class="section-label">FRECUENCIAS</span>
+        <div class="meter-row">
+          <span class="label-sm">Bass<br><em>20–250 Hz</em></span>
+          <div class="bar-wrap"><div id="bar-bass" class="bar-fill bar-bass"></div></div>
+          <span id="val-bass" class="value-sm">0</span>
+        </div>
+        <div class="meter-row">
+          <span class="label-sm">LowMid<br><em>250–500 Hz</em></span>
+          <div class="bar-wrap"><div id="bar-lowmid" class="bar-fill bar-lowmid"></div></div>
+          <span id="val-lowmid" class="value-sm">0</span>
+        </div>
+        <div class="meter-row">
+          <span class="label-sm">HighMid<br><em>2k–4k Hz</em></span>
+          <div class="bar-wrap"><div id="bar-highmid" class="bar-fill bar-highmid"></div></div>
+          <span id="val-highmid" class="value-sm">0</span>
+        </div>
+        <div class="meter-row">
+          <span class="label-sm">Treble<br><em>4k–20k Hz</em></span>
+          <div class="bar-wrap"><div id="bar-treble" class="bar-fill bar-treble"></div></div>
+          <span id="val-treble" class="value-sm">0</span>
+        </div>
+      </section>
+
+      <!-- Umbrales / Ganancia -->
+      <section class="panel-section">
+        <span class="section-label">UMBRALES</span>
+        <div class="threshold-row">
+          <span class="label-sm">Vol mín</span>
+          <span class="value-fixed">0.010</span>
+        </div>
+        <div class="threshold-row">
+          <span class="label-sm">High B</span>
+          <span class="value-fixed">25 / 255</span>
+        </div>
+        <div class="threshold-row">
+          <span class="label-sm">Bass A</span>
+          <span class="value-fixed">70 / 255</span>
+        </div>
+        <div class="threshold-row">
+          <span class="label-sm">Spike C</span>
+          <span class="value-fixed">0.18</span>
+        </div>
+        <div class="threshold-row">
+          <span class="label-sm">Clap vol</span>
+          <span class="value-fixed">0.20</span>
+        </div>
+      </section>
+
+      <!-- Estado de interacciones -->
+      <section class="panel-section">
+        <span class="section-label">INTERACCIÓN</span>
+        <div class="state-row">
+          <span class="state-dot" id="dot-a"></span>
+          <span class="label-sm"><strong>A</strong> — "UUU" <em>Colores suben</em></span>
+        </div>
+        <div class="state-row">
+          <span class="state-dot" id="dot-b"></span>
+          <span class="label-sm"><strong>B</strong> — "SSS" <em>Blanco invade</em></span>
+        </div>
+        <div class="state-row">
+          <span class="state-dot" id="dot-c"></span>
+          <span class="label-sm"><strong>C</strong> — Aplauso <em>Temblor</em></span>
+        </div>
+      </section>
+
+    </aside>
+
+    <!-- ── Canvas de la obra ── -->
     <div id="canvas-container"></div>
+
   </main>
 </body>
 
