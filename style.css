@@ -4,35 +4,231 @@
 
 body {
   margin: 0;
-  background: #ffffff;
-  color: #111;
-  font-family: Arial, Helvetica, sans-serif;
+  background: #0f0f0f;
+  color: #e0e0e0;
+  font-family: 'Courier New', Courier, monospace;
 }
 
 main {
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  flex-direction: row;
+  align-items: flex-start;
   justify-content: center;
   min-height: 100vh;
-  padding: 24px;
+  padding: 24px 16px;
+  gap: 20px;
 }
 
-h1 {
-  margin-bottom: 16px;
-  font-size: 1rem;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
+/* ── Canvas ── */
 #canvas-container {
-  width: min(100vw, 1080px);
-  max-width: 1080px;
+  flex-shrink: 0;
+  width: min(calc(100vw - 280px), 800px);
 }
 
 canvas {
   width: 100%;
   height: auto;
   display: block;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ── Panel lateral ── */
+#audio-panel {
+  width: 220px;
+  flex-shrink: 0;
+  background: #161616;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  padding: 14px 12px;
+  position: sticky;
+  top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  zoom: 1.386;
+}
+
+.panel-title {
+  font-size: 0.65rem;
+  letter-spacing: 0.18em;
+  color: #888;
+  text-transform: uppercase;
+  margin: 0 0 2px 0;
+  font-weight: 400;
+  border-bottom: 1px solid #2a2a2a;
+  padding-bottom: 8px;
+}
+
+.panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.section-label {
+  font-size: 0.55rem;
+  letter-spacing: 0.14em;
+  color: #555;
+  text-transform: uppercase;
+}
+
+/* ── VU Meter ── */
+.vu-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vu-bar-container {
+  flex: 1;
+  height: 18px;
+  background: #0a0a0a;
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+
+.vu-bar {
+  height: 100%;
+  width: 0%;
+  border-radius: 3px;
+  transition: width 0.04s linear;
+  background: linear-gradient(to right,
+    #00e676 0%,
+    #00e676 60%,
+    #ffeb3b 60%,
+    #ffeb3b 80%,
+    #f44336 80%,
+    #f44336 100%
+  );
+  /* clip to actual level */
+  background-size: 100% 100%;
+}
+
+.vu-zones {
+  display: none; /* zonas incluidas en el gradiente del bar */
+}
+
+.vu-number {
+  font-size: 0.65rem;
+  color: #aaa;
+  width: 38px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Barras de métricas ── */
+.meter-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.label-sm {
+  font-size: 0.55rem;
+  color: #666;
+  width: 52px;
+  flex-shrink: 0;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.label-sm em {
+  font-style: normal;
+  color: #444;
+  font-size: 0.50rem;
+  display: block;
+}
+
+.label-sm strong {
+  color: #ccc;
+  font-weight: 700;
+}
+
+.state-row .label-sm em {
+  display: inline; /* en las filas de interacción, el em va en línea */
+  color: #555;
+  font-size: 0.52rem;
+  margin-left: 2px;
+}
+
+.bar-wrap {
+  flex: 1;
+  height: 8px;
+  background: #0d0d0d;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 2px;
+  transition: width 0.05s linear;
+}
+
+.bar-vol    { background: #64b5f6; }
+.bar-spike  { background: #ff7043; }
+.bar-bass   { background: #ab47bc; }
+.bar-lowmid { background: #26c6da; }
+.bar-highmid{ background: #66bb6a; }
+.bar-treble { background: #ffa726; }
+
+.value-sm {
+  font-size: 0.6rem;
+  color: #aaa;
+  width: 28px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Peak hold ── */
+.peak-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* ── Umbrales fijos ── */
+.threshold-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.value-fixed {
+  font-size: 0.6rem;
+  color: #555;
+  font-family: 'Courier New', monospace;
+}
+
+/* ── Estado de interacciones ── */
+.state-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.state-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2a2a2a;
+  flex-shrink: 0;
+  transition: background 0.1s, box-shadow 0.1s;
+}
+
+.state-dot.active-a {
+  background: #64b5f6;
+  box-shadow: 0 0 6px #64b5f6;
+}
+
+.state-dot.active-b {
+  background: #ffffff;
+  box-shadow: 0 0 6px #ffffff;
+}
+
+.state-dot.active-c {
+  background: #ff7043;
+  box-shadow: 0 0 6px #ff7043;
 }

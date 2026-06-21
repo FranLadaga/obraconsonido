@@ -11,6 +11,7 @@ let isShaking = false;    // Estado del temblor (interacción C)
 let shakeFrames = 0;      // Frames restantes de temblor
 let shakeIntensity = 0;   // Intensidad actual del desplazamiento
 let prevVol = 0;          // Volumen del frame anterior (para detectar pico brusco)
+let peakVol = 0;          // Peak hold del VU meter (decae lentamente)
 let sketchSeed;
 let mic;
 let fft;
@@ -145,7 +146,75 @@ function draw() {
     }
   }
 
+  updateAudioPanel();
   drawComposition();
+}
+
+/**
+ * Actualiza el panel de control de audio en el DOM a tiempo real.
+ * Se llama cada frame desde draw() con los valores de mic y fft actuales.
+ */
+function updateAudioPanel() {
+  // Obtener valores actuales del audio
+  const vol      = mic ? mic.getLevel() : 0;
+  const volSpike = vol - prevVol; // ya calculado antes pero lo recalculamos para el panel
+  const bass     = fft ? fft.getEnergy('bass')    : 0;
+  const lowMid   = fft ? fft.getEnergy('lowMid')  : 0;
+  const highMid  = fft ? fft.getEnergy('highMid') : 0;
+  const treble   = fft ? fft.getEnergy('treble')  : 0;
+
+  // ── Peak hold: sube rápido, baja lento ──
+  if (vol > peakVol) {
+    peakVol = vol;
+  } else {
+    peakVol = max(0, peakVol - 0.002); // decay suave
+  }
+
+  // ── VU Meter principal ──
+  const vuBar = document.getElementById('vu-bar');
+  if (vuBar) vuBar.style.width = (vol * 100).toFixed(1) + '%';
+  const vuVal = document.getElementById('vu-val');
+  if (vuVal) vuVal.textContent = vol.toFixed(3);
+  const peakEl = document.getElementById('peak-val');
+  if (peakEl) peakEl.textContent = peakVol.toFixed(3);
+
+  // ── Barras de volumen y spike ──
+  setBar('bar-vol',   vol,                    1.0,  'val-vol',    vol.toFixed(3));
+  setBar('bar-spike', max(0, volSpike),        0.5,  'val-spike',  volSpike.toFixed(3));
+
+  // ── Barras de frecuencia (0-255 → 0-100%) ──
+  setBar('bar-bass',    bass,    255, 'val-bass',    Math.round(bass));
+  setBar('bar-lowmid',  lowMid,  255, 'val-lowmid',  Math.round(lowMid));
+  setBar('bar-highmid', highMid, 255, 'val-highmid', Math.round(highMid));
+  setBar('bar-treble',  treble,  255, 'val-treble',  Math.round(treble));
+
+  // ── Estado de interacciones ──
+  const isActiveA = vol > 0.01 && bass > 70 && lowMid > 50 && highMid < 60;
+  const isActiveB = isAnimatingB;
+  const isActiveC = isShaking;
+
+  setDot('dot-a', isActiveA, 'active-a');
+  setDot('dot-b', isActiveB, 'active-b');
+  setDot('dot-c', isActiveC, 'active-c');
+}
+
+/** Helper: actualiza el ancho de una barra y su etiqueta numérica */
+function setBar(barId, value, maxVal, labelId, labelText) {
+  const el = document.getElementById(barId);
+  if (el) el.style.width = ((value / maxVal) * 100).toFixed(1) + '%';
+  const lbl = document.getElementById(labelId);
+  if (lbl) lbl.textContent = labelText;
+}
+
+/** Helper: activa/desactiva la clase CSS de un indicador de estado */
+function setDot(dotId, isActive, activeClass) {
+  const el = document.getElementById(dotId);
+  if (!el) return;
+  if (isActive) {
+    el.classList.add(activeClass);
+  } else {
+    el.classList.remove(activeClass);
+  }
 }
 
 function drawComposition() {
@@ -155,7 +224,7 @@ function drawComposition() {
   // ── Interacción C: temblor por palmada ──
   // Aplicamos un translate aleatorio que decrece con los frames restantes
   if (isShaking && shakeFrames > 0) {
-    const decay = shakeFrames / 30; // 1.0 al inicio → 0.0 al final
+    const decay = shakeFrames / 330; // 1.0 al inicio → 0.0 al final (330 frames totales)
     const ox = random(-shakeIntensity, shakeIntensity) * decay;
     const oy = random(-shakeIntensity, shakeIntensity) * decay;
     translate(ox, oy);
