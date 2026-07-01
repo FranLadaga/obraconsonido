@@ -232,3 +232,212 @@ canvas {
   background: #ff7043;
   box-shadow: 0 0 6px #ff7043;
 }
+
+.state-dot.active-d {
+  background: #aed581;
+  box-shadow: 0 0 6px #aed581;
+}
+
+
+/* ── Sliders interactivos ── */
+.slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.slider-value {
+  font-size: 0.65rem;
+  font-family: 'Courier New', monospace;
+  color: #e0e0e0;
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 3px;
+  padding: 1px 5px;
+  min-width: 36px;
+  text-align: center;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.slider-desc {
+  font-size: 0.48rem;
+  color: #444;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  margin-top: -3px;
+}
+
+.slider-track-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* Track */
+.custom-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, #444 0%, #444 100%);
+  outline: none;
+  cursor: pointer;
+  position: relative;
+}
+
+/* Thumb */
+.custom-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #e0e0e0;
+  border: 2px solid #888;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+  box-shadow: 0 0 0 0 transparent;
+}
+
+.custom-slider::-webkit-slider-thumb:hover {
+  background: #ffffff;
+  border-color: #aaa;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.35);
+  transform: scale(1.15);
+}
+
+.custom-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #e0e0e0;
+  border: 2px solid #888;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+/* Slider de Sensibilidad — acento cian */
+#sensitivity-slider {
+  background: linear-gradient(to right, #00bcd4 0%, #00bcd4 14.3%, #2a2a2a 14.3%, #2a2a2a 100%);
+}
+
+#sensitivity-slider::-webkit-slider-thumb {
+  border-color: #00bcd4;
+  box-shadow: 0 0 0 2px rgba(0, 188, 212, 0.2);
+}
+
+#sensitivity-slider::-webkit-slider-thumb:hover {
+  background: #b2ebf2;
+  border-color: #00e5ff;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+}
+
+/* Slider de Velocidad — acento naranja */
+#speed-slider {
+  background: linear-gradient(to right, #ff7043 0%, #ff7043 25%, #2a2a2a 25%, #2a2a2a 100%);
+}
+
+#speed-slider::-webkit-slider-thumb {
+  border-color: #ff7043;
+  box-shadow: 0 0 0 2px rgba(255, 112, 67, 0.2);
+}
+
+#speed-slider::-webkit-slider-thumb:hover {
+  background: #ffe0b2;
+  border-color: #ff5722;
+  box-shadow: 0 0 10px rgba(255, 87, 34, 0.5);
+}
+
+/* Tick labels */
+.slider-ticks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.42rem;
+  color: #444;
+  letter-spacing: 0.05em;
+  padding: 0 1px;
+}
+
+/* ── Slider de Palmada — acento rosa/magenta ── */
+#clap-threshold-slider {
+  background: linear-gradient(to right, #f06292 0%, #f06292 14.6%, #2a2a2a 14.6%, #2a2a2a 100%);
+}
+
+#clap-threshold-slider::-webkit-slider-thumb {
+  border-color: #f06292;
+  box-shadow: 0 0 0 2px rgba(240, 98, 146, 0.2);
+}
+
+#clap-threshold-slider::-webkit-slider-thumb:hover {
+  background: #fce4ec;
+  border-color: #e91e63;
+  box-shadow: 0 0 10px rgba(233, 30, 99, 0.5);
+}
+
+/* ── Calibrador de palmada ── */
+.clap-calibrator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+/* Indicador de estado del spike */
+.spike-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2a2a2a;
+  border: 1px solid #3a3a3a;
+  flex-shrink: 0;
+  transition: background 0.08s, box-shadow 0.08s;
+}
+
+.spike-dot.near {
+  background: #ffd54f;
+  border-color: #ffb300;
+  box-shadow: 0 0 5px rgba(255, 213, 79, 0.5);
+}
+
+.spike-dot.triggered {
+  background: #f06292;
+  border-color: #e91e63;
+  box-shadow: 0 0 7px rgba(240, 98, 146, 0.7);
+}
+
+/* Botón de reset */
+.reset-btn {
+  background: none;
+  border: 1px solid #333;
+  border-radius: 3px;
+  color: #555;
+  font-size: 0.7rem;
+  cursor: pointer;
+  padding: 1px 4px;
+  line-height: 1;
+  transition: color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.reset-btn:hover {
+  color: #f06292;
+  border-color: #f06292;
+}
+
+/* Texto de ayuda del calibrador de palmada */
+.clap-hint {
+  margin: 3px 0 0 0;
+  padding: 0;
+  width: 100%;
+  display: block;
+  font-size: 0.44rem;
+  line-height: 1.6;
+  color: #3a3a3a;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-family: 'Courier New', monospace;
+}
+
+
+

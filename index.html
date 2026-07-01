@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Replica de Referencia</title>
   <script>
-    window.addEventListener('error', function(e) {
+    window.addEventListener('error', function (e) {
       var errorLog = document.getElementById('error-log');
       if (!errorLog) return;
       if (e.target && (e.target.src || e.target.href)) {
@@ -15,7 +15,7 @@
         errorLog.innerText += '\nError: ' + e.message + ' at ' + e.filename + ':' + e.lineno + ':' + e.colno + '\n' + (e.error ? e.error.stack : '');
       }
     }, true);
-    window.addEventListener('unhandledrejection', function(e) {
+    window.addEventListener('unhandledrejection', function (e) {
       var errorLog = document.getElementById('error-log');
       if (errorLog) {
         errorLog.innerText += '\nUnhandled Rejection: ' + e.reason;
@@ -29,7 +29,9 @@
 </head>
 
 <body>
-  <div id="error-log" style="color: red; padding: 20px; font-family: monospace; font-size: 16px; white-space: pre-wrap; z-index: 9999; position: absolute; top: 0; left: 0; pointer-events: none; width: 100%;"></div>
+  <div id="error-log"
+    style="color: red; padding: 20px; font-family: monospace; font-size: 16px; white-space: pre-wrap; z-index: 9999; position: absolute; top: 0; left: 0; pointer-events: none; width: 100%;">
+  </div>
 
   <main>
 
@@ -63,12 +65,16 @@
         <span class="section-label">VOLUMEN</span>
         <div class="meter-row">
           <span class="label-sm">Vol</span>
-          <div class="bar-wrap"><div id="bar-vol" class="bar-fill bar-vol"></div></div>
+          <div class="bar-wrap">
+            <div id="bar-vol" class="bar-fill bar-vol"></div>
+          </div>
           <span id="val-vol" class="value-sm">0.000</span>
         </div>
         <div class="meter-row">
           <span class="label-sm">Spike</span>
-          <div class="bar-wrap"><div id="bar-spike" class="bar-fill bar-spike"></div></div>
+          <div class="bar-wrap">
+            <div id="bar-spike" class="bar-fill bar-spike"></div>
+          </div>
           <span id="val-spike" class="value-sm">0.000</span>
         </div>
       </section>
@@ -78,49 +84,91 @@
         <span class="section-label">FRECUENCIAS</span>
         <div class="meter-row">
           <span class="label-sm">Bass<br><em>20–250 Hz</em></span>
-          <div class="bar-wrap"><div id="bar-bass" class="bar-fill bar-bass"></div></div>
+          <div class="bar-wrap">
+            <div id="bar-bass" class="bar-fill bar-bass"></div>
+          </div>
           <span id="val-bass" class="value-sm">0</span>
         </div>
         <div class="meter-row">
           <span class="label-sm">LowMid<br><em>250–500 Hz</em></span>
-          <div class="bar-wrap"><div id="bar-lowmid" class="bar-fill bar-lowmid"></div></div>
+          <div class="bar-wrap">
+            <div id="bar-lowmid" class="bar-fill bar-lowmid"></div>
+          </div>
           <span id="val-lowmid" class="value-sm">0</span>
         </div>
         <div class="meter-row">
           <span class="label-sm">HighMid<br><em>2k–4k Hz</em></span>
-          <div class="bar-wrap"><div id="bar-highmid" class="bar-fill bar-highmid"></div></div>
+          <div class="bar-wrap">
+            <div id="bar-highmid" class="bar-fill bar-highmid"></div>
+          </div>
           <span id="val-highmid" class="value-sm">0</span>
         </div>
         <div class="meter-row">
           <span class="label-sm">Treble<br><em>4k–20k Hz</em></span>
-          <div class="bar-wrap"><div id="bar-treble" class="bar-fill bar-treble"></div></div>
+          <div class="bar-wrap">
+            <div id="bar-treble" class="bar-fill bar-treble"></div>
+          </div>
           <span id="val-treble" class="value-sm">0</span>
         </div>
       </section>
 
-      <!-- Umbrales / Ganancia -->
+      <!-- Sensibilidad por Frecuencia -->
       <section class="panel-section">
-        <span class="section-label">UMBRALES</span>
-        <div class="threshold-row">
-          <span class="label-sm">Vol mín</span>
-          <span class="value-fixed">0.010</span>
+        <div class="slider-header">
+          <span class="section-label">SENSIBILIDAD</span>
+          <span id="sensitivity-val" class="slider-value">1.0×</span>
         </div>
-        <div class="threshold-row">
-          <span class="label-sm">High B</span>
-          <span class="value-fixed">25 / 255</span>
+        <div class="slider-desc">Multiplicador de amplitud FFT</div>
+        <div class="slider-track-wrap">
+          <input id="sensitivity-slider" class="custom-slider" type="range" min="0.5" max="4.0" step="0.1" value="1.0"
+            oninput="onSensitivityChange(this.value)" />
+          <div class="slider-ticks">
+            <span>0.5×</span><span>2×</span><span>4×</span>
+          </div>
         </div>
-        <div class="threshold-row">
-          <span class="label-sm">Bass A</span>
-          <span class="value-fixed">70 / 255</span>
+      </section>
+
+      <!-- Velocidad de Crecimiento -->
+      <section class="panel-section">
+        <div class="slider-header">
+          <span class="section-label">VELOCIDAD</span>
+          <span id="speed-val" class="slider-value">2.5</span>
         </div>
-        <div class="threshold-row">
-          <span class="label-sm">Spike C</span>
-          <span class="value-fixed">0.18</span>
+        <div class="slider-desc">Paso de crecimiento visual</div>
+        <div class="slider-track-wrap">
+          <input id="speed-slider" class="custom-slider" type="range" min="0.5" max="8.0" step="0.5" value="2.5"
+            oninput="onSpeedChange(this.value)" />
+          <div class="slider-ticks">
+            <span>0.5</span><span>4</span><span>8</span>
+          </div>
         </div>
-        <div class="threshold-row">
-          <span class="label-sm">Clap vol</span>
-          <span class="value-fixed">0.20</span>
+      </section>
+
+      <!-- Umbral Palmada (calibración para headset) -->
+      <section class="panel-section">
+        <div class="slider-header">
+          <span class="section-label">PALMADA C</span>
+          <span id="clap-threshold-val" class="slider-value" style="border-color:#f06292;color:#f8bbd9;">0.08</span>
         </div>
+        <div class="slider-desc">Umbral de spike &mdash; bajar para headset</div>
+        <div class="slider-track-wrap">
+          <input id="clap-threshold-slider" class="custom-slider" type="range" min="0.03" max="0.35" step="0.01"
+            value="0.08" oninput="onClapThresholdChange(this.value)" />
+          <div class="slider-ticks">
+            <span>0.03</span><span>0.19</span><span>0.35</span>
+          </div>
+        </div>
+        <!-- Calibrador: muestra el pico de spike real -->
+        <div class="clap-calibrator">
+          <span class="spike-dot" id="spike-status"></span>
+          <span class="label-sm" style="flex:1;">Spike pico</span>
+          <span id="peak-spike-val" class="value-sm">0.000</span>
+          <button class="reset-btn" onclick="resetSpikeHold()" title="Resetear pico">&#8635;</button>
+        </div>
+        <p class="clap-hint">
+          Aplaud&iacute; una vez y observ&aacute; el valor &ldquo;Spike pico&rdquo;.
+          Luego ajust&aacute; el slider a un poco menos de ese valor.
+        </p>
       </section>
 
       <!-- Estado de interacciones -->
@@ -128,15 +176,19 @@
         <span class="section-label">INTERACCIÓN</span>
         <div class="state-row">
           <span class="state-dot" id="dot-a"></span>
-          <span class="label-sm"><strong>A</strong> — "UUU" <em>Colores suben</em></span>
+          <span class="label-sm"><strong>A</strong> &mdash; &ldquo;UUU&rdquo; <em>Colores suben</em></span>
         </div>
         <div class="state-row">
           <span class="state-dot" id="dot-b"></span>
-          <span class="label-sm"><strong>B</strong> — "SSS" <em>Blanco invade</em></span>
+          <span class="label-sm"><strong>B</strong> &mdash; &ldquo;SSS&rdquo; <em>Blanco invade</em></span>
         </div>
         <div class="state-row">
           <span class="state-dot" id="dot-c"></span>
-          <span class="label-sm"><strong>C</strong> — Aplauso <em>Temblor</em></span>
+          <span class="label-sm"><strong>C</strong> &mdash; Aplauso <em>Temblor</em></span>
+        </div>
+        <div class="state-row">
+          <span class="state-dot" id="dot-d"></span>
+          <span class="label-sm"><strong>D</strong> &mdash; Silencio <em>Pulso</em></span>
         </div>
       </section>
 

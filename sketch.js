@@ -12,9 +12,22 @@ let shakeFrames = 0;      // Frames restantes de temblor
 let shakeIntensity = 0;   // Intensidad actual del desplazamiento
 let prevVol = 0;          // Volumen del frame anterior (para detectar pico brusco)
 let peakVol = 0;          // Peak hold del VU meter (decae lentamente)
+let peakSpike = 0;        // Peak hold del volSpike (para calibrar umbral palmada)
 let sketchSeed;
 let mic;
 let fft;
+let freqSensitivity = 1.0; // Slider 1: multiplicador de amplitud FFT (0.5×–4×)
+let growthStep = 2.5;      // Slider 2: paso de crecimiento visual por frame (0.5–8)
+let clapThreshold = 0.08;  // Slider 3: umbral de spike para detectar palmada (0.03–0.35)
+
+// ── Interacción D: pulso de escala por silencio prolongado ──
+let silenceStartTime = null; // timestamp (millis) del inicio del silencio actual; null = hay sonido
+let isInteractionD = false;  // D activo: trazos pulsando en tamaño
+let pulseClock     = 0;      // reloj interno del pulso (frames transcurridos en D)
+let pulseElementIdx = 0;     // contador de elemento para cálculo de fase
+const SILENCE_MS   = 5000;   // ms de silencio continuo para activar D (exactamente 5 s)
+const PULSE_PERIOD = 180;    // frames de un ciclo completo (~3 s a 60 fps)
+const PULSE_MAX    = 1.7;    // escala máxima del pulso (1.0 = tamaño original)
 
 // Paleta ajustada por distancia RGB respecto a referencia.jpeg
 const PALETTE_HEX = [
@@ -78,28 +91,31 @@ function draw() {
     fft.analyze();
 
     // Bass (20–250 Hz): fundamental de la voz
-    let bass = fft.getEnergy("bass");
+    // Se aplica freqSensitivity como ganancia antes de comparar con umbrales
+    let bass    = min(fft.getEnergy("bass")    * freqSensitivity, 255);
 
     // LowMid (250–500 Hz): formante F1 del sonido "uuu" (~300–500 Hz)
-    let lowMid = fft.getEnergy("lowMid");
+    let lowMid  = min(fft.getEnergy("lowMid")  * freqSensitivity, 255);
 
     // Agudos PUROS: solo highMid (2000–4000 Hz) y treble (4000–20000 Hz)
     // NO incluimos mid (500–2000 Hz) porque esa banda también es activa en voz grave
-    let highMid = fft.getEnergy("highMid");
-    let treble = fft.getEnergy("treble");
+    let highMid = min(fft.getEnergy("highMid") * freqSensitivity, 255);
+    let treble  = min(fft.getEnergy("treble")  * freqSensitivity, 255);
     let highTotal = max(highMid, treble);
 
     const umbralVol = 0.01;
 
     // ── Detección de PALMADA (interacción C) ──
     // Una palmada genera un pico brusco de volumen en 1-2 frames.
+    // clapThreshold es configurable desde el slider para adaptarse a headsets
+    // que tienen AGC o ganancia diferente a un micrófono de escritorio.
     const volSpike = vol - prevVol;
-    const umbralSpike = 0.18;
-    const umbralVolClap = 0.20;
+    const umbralSpike   = clapThreshold;           // spike brusco
+    const umbralVolClap = clapThreshold + 0.04;    // nivel mínimo absoluto
 
     if (volSpike > umbralSpike && vol > umbralVolClap && shakeFrames === 0) {
       isShaking = true;
-      shakeFrames = 30;
+      shakeFrames = 45;  // extendido de 30 a 45 para efecto más visible
       shakeIntensity = map(vol, umbralVolClap, 1.0, 6, 18);
     }
     prevVol = vol;
@@ -112,10 +128,10 @@ function draw() {
         if (growthWhiteY >= 800 || growthWhiteY <= -120) {
           growthWhiteY = Math.max(growthY, 300);
         }
-        growthWhiteY += 2.5;
+        growthWhiteY += growthStep;
         if (growthWhiteY > 800) growthWhiteY = 800;
 
-        growthY += 2.5;
+        growthY += growthStep;
         if (growthY > 800) growthY = 800;
 
         // ── Interacción A: "uuu" — bajo sostenido con formantes bajos ──
@@ -126,16 +142,36 @@ function draw() {
         if (growthY === -120) {
           growthY = 800;
         }
-        growthY -= 2.5;
+        growthY -= growthStep;
         if (growthY < -120) growthY = -120;
 
         if (growthWhiteY < 800) {
-          growthWhiteY -= 2.5;
+          growthWhiteY -= growthStep;
           if (growthWhiteY < -120) growthWhiteY = -120;
         }
       }
     }
   }
+
+  // ── Detección de SILENCIO → Interacción D ──
+  // Usa millis() en lugar de frames para que sean exactamente 5 s reales,
+  // independientemente de la framerate real del sketch.
+  if (mic) {
+    const vol = mic.getLevel();
+    if (vol < 0.01) {
+      // Silencio: iniciar cronometro si no estaba corriendo
+      if (silenceStartTime === null) silenceStartTime = millis();
+      isInteractionD = (millis() - silenceStartTime) >= SILENCE_MS;
+    } else {
+      // Sonido detectado: cancelar cronómetro y desactivar D
+      silenceStartTime = null;
+      if (isInteractionD) {
+        isInteractionD = false;
+        pulseClock = 0;
+      }
+    }
+  }
+  if (isInteractionD) pulseClock++;
 
   // ── Countdown del temblor C ──
   if (shakeFrames > 0) {
@@ -157,17 +193,25 @@ function draw() {
 function updateAudioPanel() {
   // Obtener valores actuales del audio
   const vol      = mic ? mic.getLevel() : 0;
-  const volSpike = vol - prevVol; // ya calculado antes pero lo recalculamos para el panel
+  const volSpike = vol - prevVol; // recalculado para el panel (prevVol aún no se actualizó)
   const bass     = fft ? fft.getEnergy('bass')    : 0;
   const lowMid   = fft ? fft.getEnergy('lowMid')  : 0;
   const highMid  = fft ? fft.getEnergy('highMid') : 0;
   const treble   = fft ? fft.getEnergy('treble')  : 0;
 
-  // ── Peak hold: sube rápido, baja lento ──
+  // ── Peak hold de volumen: sube rápido, baja lento ──
   if (vol > peakVol) {
     peakVol = vol;
   } else {
-    peakVol = max(0, peakVol - 0.002); // decay suave
+    peakVol = max(0, peakVol - 0.002);
+  }
+
+  // ── Peak hold de spike: sube instantáneo, decae en ~3 s ──
+  // Permite ver cuánto spike máximo genera el headset ante una palmada
+  if (volSpike > peakSpike) {
+    peakSpike = volSpike;
+  } else {
+    peakSpike = max(0, peakSpike - 0.0008); // decae más lento que el vol
   }
 
   // ── VU Meter principal ──
@@ -180,7 +224,22 @@ function updateAudioPanel() {
 
   // ── Barras de volumen y spike ──
   setBar('bar-vol',   vol,                    1.0,  'val-vol',    vol.toFixed(3));
-  setBar('bar-spike', max(0, volSpike),        0.5,  'val-spike',  volSpike.toFixed(3));
+  setBar('bar-spike', max(0, volSpike),        0.35, 'val-spike',  volSpike.toFixed(3));
+
+  // ── Peak spike: actualiza el indicador de calibración ──
+  const peakSpikeEl = document.getElementById('peak-spike-val');
+  if (peakSpikeEl) peakSpikeEl.textContent = peakSpike.toFixed(3);
+  // Coloreamos el indicador: rojo si supera el umbral, amarillo si está cerca, gris si lejos
+  const spikeStatus = document.getElementById('spike-status');
+  if (spikeStatus) {
+    if (volSpike >= clapThreshold) {
+      spikeStatus.className = 'spike-dot triggered';
+    } else if (volSpike >= clapThreshold * 0.6) {
+      spikeStatus.className = 'spike-dot near';
+    } else {
+      spikeStatus.className = 'spike-dot';
+    }
+  }
 
   // ── Barras de frecuencia (0-255 → 0-100%) ──
   setBar('bar-bass',    bass,    255, 'val-bass',    Math.round(bass));
@@ -192,10 +251,12 @@ function updateAudioPanel() {
   const isActiveA = vol > 0.01 && bass > 70 && lowMid > 50 && highMid < 60;
   const isActiveB = isAnimatingB;
   const isActiveC = isShaking;
+  const isActiveD = isInteractionD;
 
   setDot('dot-a', isActiveA, 'active-a');
   setDot('dot-b', isActiveB, 'active-b');
   setDot('dot-c', isActiveC, 'active-c');
+  setDot('dot-d', isActiveD, 'active-d');
 }
 
 /** Helper: actualiza el ancho de una barra y su etiqueta numérica */
@@ -219,6 +280,7 @@ function setDot(dotId, isActive, activeClass) {
 
 function drawComposition() {
   randomSeed(sketchSeed);
+  pulseElementIdx = 0; // resetear contador de fase D al inicio de cada frame
   background(255);
 
   // ── Interacción C: temblor por palmada ──
@@ -245,11 +307,12 @@ function drawComposition() {
     const angle = random(-PI / 10, PI / 10);
     const alpha = random(180, 230);
     const col = random(smallSpotColors);
+    const ps = getPulseScale(pulseElementIdx++);
     const shouldDraw = isAnimatingB
       ? true
       : (y > growthY && (y >= 240 || y < growthWhiteY));
     if (shouldDraw) {
-      placeModuleDirect(img, x, y, scaleFactor, angle, alpha, col);
+      placeModuleDirect(img, x, y, scaleFactor * ps, angle, alpha, col);
     }
   }
 
@@ -263,11 +326,12 @@ function drawComposition() {
     const angle = random(-PI / 8, PI / 8);
     const alpha = random(210, 255);
     const col = random(bigStrokeColors);
+    const ps = getPulseScale(pulseElementIdx++);
     const shouldDraw = isAnimatingB
       ? true
       : (y > growthY && (y >= 240 || y < growthWhiteY));
     if (shouldDraw) {
-      placeModuleDirect(img, x, y, scaleFactor, angle, alpha, col);
+      placeModuleDirect(img, x, y, scaleFactor * ps, angle, alpha, col);
     }
   }
 
@@ -281,11 +345,12 @@ function drawComposition() {
     const angle = random(-PI / 6, PI / 6);
     const alpha = random(200, 255);
     const col = random(bigStrokeColors);
+    const ps = getPulseScale(pulseElementIdx++);
     const shouldDraw = isAnimatingB
       ? true
       : (y > growthY && (y >= 240 || y < growthWhiteY));
     if (shouldDraw) {
-      placeModuleDirect(img, x, y, scaleFactor, angle, alpha, col);
+      placeModuleDirect(img, x, y, scaleFactor * ps, angle, alpha, col);
     }
   }
 
@@ -299,11 +364,12 @@ function drawComposition() {
     const angle = random(-PI / 5, PI / 5);
     const alpha = random(215, 255);
     const col = random(overlayColors);
+    const ps = getPulseScale(pulseElementIdx++);
     const shouldDraw = isAnimatingB
       ? true
       : (y > growthY && (y >= 240 || y < growthWhiteY));
     if (shouldDraw) {
-      placeModuleDirect(img, x, y, scaleFactor, angle, alpha, col);
+      placeModuleDirect(img, x, y, scaleFactor * ps, angle, alpha, col);
     }
   }
 
@@ -317,22 +383,26 @@ function drawComposition() {
     const angle = random(-PI / 8, PI / 8);
     const alpha = random(190, 240);
     const col = random(smallSpotColors);
+    const ps = getPulseScale(pulseElementIdx++);
     const shouldDraw = isAnimatingB
       ? true
       : (y > growthY && (y >= 240 || y < growthWhiteY));
     if (shouldDraw) {
-      placeModuleDirect(img, x, y, scaleFactor, angle, alpha, col);
+      placeModuleDirect(img, x, y, scaleFactor * ps, angle, alpha, col);
     }
   }
 
   // ── Capa superior de manchas blancas (`mancha04.png`) ──
-  // Dibuja manchas blancas para tapar orgánicamente el graffiti de arriba, imitando la referencia
+  // Dibuja manchas blancas para tapar orgánicamente el graffiti de arriba, imitando la referencia.
+  // El pulso de escala se reduce al 70% para que no tapen demasiado la zona superior.
   for (let i = 0; i < 75; i++) {
     const x = random(-80, width + 80);
     const y = random(-120, 160);
-    const scaleFactor = random(0.42, 0.90); // +20% vs versión anterior (manchaBlanca)
+    const scaleFactor = random(0.42, 0.90);
+    const rawPs = getPulseScale(pulseElementIdx++);
+    const ps = 1.0 + (rawPs - 1.0) * 0.7; // 30% menos amplitud de pulso para blancos
     if (y < growthWhiteY) {
-      placeModuleDirect(manchaBlanca, x, y, scaleFactor, random(-PI, PI), random(230, 255), '#FFFFFF');
+      placeModuleDirect(manchaBlanca, x, y, scaleFactor * ps, random(-PI, PI), random(230, 255), '#FFFFFF');
     }
   }
 
@@ -342,6 +412,7 @@ function drawComposition() {
   // por encima de las manchas blancas para que queden al frente, simulando que "se comen" el blanco.
   if (growthY < 220) {
     randomSeed(sketchSeed); // Reiniciamos la semilla para reproducir la misma posición y color exactos
+    pulseElementIdx = 0;    // Reiniciamos el índice de pulso para sincronizar fases con el primer pase
 
     // 1. Manchas muy pequeñas y puntuales
     for (let i = 0; i < 140; i++) {
@@ -353,8 +424,9 @@ function drawComposition() {
       const angle = random(-PI / 10, PI / 10);
       const alpha = random(180, 230);
       const col = random(smallSpotColors);
+      const ps = getPulseScale(pulseElementIdx++);
       if (y < 220 && y > growthY && y < growthWhiteY) {
-        placeModuleDirect(img, x, y, scaleFactor, angle, alpha, col);
+        placeModuleDirect(img, x, y, scaleFactor * ps, angle, alpha, col);
       }
     }
 
@@ -368,8 +440,9 @@ function drawComposition() {
       const angle = random(-PI / 8, PI / 8);
       const alpha = random(210, 255);
       const col = random(bigStrokeColors);
+      const ps = getPulseScale(pulseElementIdx++);
       if (y < 220 && y > growthY && y < growthWhiteY) {
-        placeModuleDirect(img, x, y, scaleFactor, angle, alpha, col);
+        placeModuleDirect(img, x, y, scaleFactor * ps, angle, alpha, col);
       }
     }
 
@@ -383,8 +456,9 @@ function drawComposition() {
       const angle = random(-PI / 6, PI / 6);
       const alpha = random(200, 255);
       const col = random(bigStrokeColors);
+      const ps = getPulseScale(pulseElementIdx++);
       if (y < 220 && y > growthY && y < growthWhiteY) {
-        placeModuleDirect(img, x, y, scaleFactor, angle, alpha, col);
+        placeModuleDirect(img, x, y, scaleFactor * ps, angle, alpha, col);
       }
     }
 
@@ -398,8 +472,9 @@ function drawComposition() {
       const angle = random(-PI / 5, PI / 5);
       const alpha = random(215, 255);
       const col = random(overlayColors);
+      const ps = getPulseScale(pulseElementIdx++);
       if (y < 220 && y > growthY && y < growthWhiteY) {
-        placeModuleDirect(img, x, y, scaleFactor, angle, alpha, col);
+        placeModuleDirect(img, x, y, scaleFactor * ps, angle, alpha, col);
       }
     }
 
@@ -413,10 +488,32 @@ function drawComposition() {
       const angle = random(-PI / 8, PI / 8);
       const alpha = random(190, 240);
       const col = random(smallSpotColors);
+      const ps = getPulseScale(pulseElementIdx++);
       if (y < 220 && y > growthY && y < growthWhiteY) {
-        placeModuleDirect(img, x, y, scaleFactor, angle, alpha, col);
+        placeModuleDirect(img, x, y, scaleFactor * ps, angle, alpha, col);
       }
     }
+  }
+}
+
+/**
+ * Calcula el multiplicador de escala (onda triangular lineal) para el elemento #idx.
+ * Cada elemento tiene un desfase de fase proporcional a su índice dentro del total (850),
+ * lo que hace que el crecimiento/decrecimiento ocurra de forma independiente y escalonada.
+ * Devuelve 1.0 si la interacción D no está activa.
+ */
+function getPulseScale(idx) {
+  if (!isInteractionD) return 1.0;
+  // Desfase proporcional: los 850 elementos cubren un ciclo completo de PULSE_PERIOD
+  const phase = (idx % 850) / 850 * PULSE_PERIOD;
+  const t = (pulseClock + phase) % PULSE_PERIOD;
+  const half = PULSE_PERIOD / 2;
+  if (t < half) {
+    // Crecimiento lineal: 1.0 → PULSE_MAX
+    return 1.0 + (PULSE_MAX - 1.0) * (t / half);
+  } else {
+    // Decrecimiento lineal: PULSE_MAX → 1.0
+    return PULSE_MAX - (PULSE_MAX - 1.0) * ((t - half) / half);
   }
 }
 
@@ -569,3 +666,71 @@ function windowResized() {
 }
 
 // Las interacciones son controladas por micrófono, se desactivaron los disparadores de teclado.
+
+/**
+ * Callback del slider de Sensibilidad.
+ * Actualiza freqSensitivity y refresca el indicador numérico y el gradiente de la pista.
+ */
+function onSensitivityChange(val) {
+  freqSensitivity = parseFloat(val);
+  const display = document.getElementById('sensitivity-val');
+  if (display) display.textContent = freqSensitivity.toFixed(1) + '×';
+
+  // Actualiza el gradiente del track para mostrar el progreso
+  const slider = document.getElementById('sensitivity-slider');
+  if (slider) {
+    const min  = parseFloat(slider.min);   // 0.5
+    const max  = parseFloat(slider.max);   // 4.0
+    const pct  = ((freqSensitivity - min) / (max - min) * 100).toFixed(1);
+    slider.style.background =
+      `linear-gradient(to right, #00bcd4 0%, #00bcd4 ${pct}%, #2a2a2a ${pct}%, #2a2a2a 100%)`;
+  }
+}
+
+/**
+ * Callback del slider de Velocidad de Crecimiento.
+ * Actualiza growthStep y refresca el indicador numérico y el gradiente de la pista.
+ */
+function onSpeedChange(val) {
+  growthStep = parseFloat(val);
+  const display = document.getElementById('speed-val');
+  if (display) display.textContent = growthStep.toFixed(1);
+
+  // Actualiza el gradiente del track
+  const slider = document.getElementById('speed-slider');
+  if (slider) {
+    const min  = parseFloat(slider.min);   // 0.5
+    const max  = parseFloat(slider.max);   // 8.0
+    const pct  = ((growthStep - min) / (max - min) * 100).toFixed(1);
+    slider.style.background =
+      `linear-gradient(to right, #ff7043 0%, #ff7043 ${pct}%, #2a2a2a ${pct}%, #2a2a2a 100%)`;
+  }
+}
+
+/**
+ * Callback del slider de Umbral Palmada.
+ * Controla cuán brusco debe ser el pico de volumen para disparar la interacción C.
+ * Bajar este valor hace la detección más sensible (ideal para headsets con AGC).
+ */
+function onClapThresholdChange(val) {
+  clapThreshold = parseFloat(val);
+  const display = document.getElementById('clap-threshold-val');
+  if (display) display.textContent = clapThreshold.toFixed(2);
+
+  // Actualiza el gradiente del track
+  const slider = document.getElementById('clap-threshold-slider');
+  if (slider) {
+    const min  = parseFloat(slider.min);   // 0.03
+    const max  = parseFloat(slider.max);   // 0.35
+    const pct  = ((clapThreshold - min) / (max - min) * 100).toFixed(1);
+    slider.style.background =
+      `linear-gradient(to right, #f06292 0%, #f06292 ${pct}%, #2a2a2a ${pct}%, #2a2a2a 100%)`;
+  }
+}
+
+/**
+ * Resetea el peak hold del spike (botón de calibración).
+ */
+function resetSpikeHold() {
+  peakSpike = 0;
+}
